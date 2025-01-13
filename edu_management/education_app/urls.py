@@ -54,4 +54,8 @@ urlpatterns = [
     path('parent_view_child/',ParentViewChild.as_view({'get':'list'}),name='parent_view_child'),
     path('update_student_profile/',UpdateStudentProfileView.as_view(),name='update_student_profile'),
     path('search-image/', ImageSearchView.as_view(), name='search-image'),
+    path('check-api-key/', views.check_api_key, name='check_api_key'),
+    #path('quiz/', quiz_view, name='quiz'),  
+    #path('generate-mcqs/', views.generate_mcqs_view, name='generate_mcqs'),  # Ensure the correct view function
+    #path('quiz/feedback/', QuizFeedbackView.as_view(), name='quiz_feedback')
 ]
