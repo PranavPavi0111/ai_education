@@ -7,45 +7,37 @@ from rest_framework import status,viewsets,generics
 from rest_framework.views import APIView
 from rest_framework.decorators import api_view
 import requests
-
-# Create your views here.
-
+from django.db.models import ProtectedError
 
 class ParentRegistrationView(viewsets.ModelViewSet):
     queryset = Parent.objects.all()
     permission_classes = [AllowAny]
     serializer_class = UserRegisterSerializer
-    http_method_names = ['post']
+    http_method_names = ['post', 'patch']
 
-    def create(self,request,*args,**kwargs):
+    def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         if serializer.is_valid():
             self.perform_create(serializer)
             response_data = {
                 "status": "success",
-                "message": "Parent created successfuly"
+                "message": "Parent created successfully"
             }
-            return Response(response_data,status=status.HTTP_200_OK)
+            return Response(response_data, status=status.HTTP_200_OK)
         else:
             response_data = {
                 "status": "failed",
                 "message": "Invalid Details"
             }
-            return Response(response_data,status=status.HTTP_400_BAD_REQUEST)
-
+            return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
 
 class ParentAddStudentView(viewsets.ModelViewSet):
     queryset = Student.objects.all()
     serializer_class = StudentRegisterSerializer
     http_method_names = ['post']
     def create(self, request, *args, **kwargs):
-        parent_id = request.session.get('id')  # Get parent ID from session
-        # if not parent_id:
-        #     return Response(
-        #         {"status": "failed", "message": "Parent not authenticated or session expired"},
-        #         status=status.HTTP_401_UNAUTHORIZED
-        #     )
-        
+        # Get parent id from the request body
+        parent_id = request.data.get('parent')
         # Add parent ID to the request data
         data = request.data.copy()
         data['parent'] = parent_id 
@@ -85,13 +77,12 @@ class LoginView(APIView):
                         "message": "Login Successful",
                         "user": {
                             "id": parent.id,
-                            "name": parent.name,  # Assuming `name` is a field in Parent model
+                            "name": parent.name,
                             "email": parent.email,
                             "role": "parent",
+                            "phone_number": parent.phone_number,
                         }
                     }
-                    request.session['id'] = parent.id
-                    request.session['role'] = 'parent'
                     return Response(response_data, status=status.HTTP_200_OK)
                 else:
                     return Response(
@@ -110,13 +101,12 @@ class LoginView(APIView):
                         "message": "Login Successful",
                         "user": {
                             "id": student.id,
-                            "name": student.name,  # Assuming `name` is a field in Student model
+                            "name": student.name,
                             "email": student.email,
                             "role": "student",
+                            "token": "your-jwt-token-here"  # Add JWT token generation
                         }
                     }
-                    request.session['id'] = student.id
-                    request.session['role'] = 'student'
                     return Response(response_data, status=status.HTTP_200_OK)
                 else:
                     return Response(
@@ -126,12 +116,10 @@ class LoginView(APIView):
             except Student.DoesNotExist:
                 pass
 
-            # If no user found with the provided email
             return Response(
                 {"status": "failed", "message": "User not found with the given email"},
                 status=status.HTTP_404_NOT_FOUND,
             )
-
         else:
             return Response(
                 {"status": "failed", "message": "Invalid input", "errors": serializer.errors},
@@ -141,40 +129,89 @@ class LoginView(APIView):
 
 class ParentViewChild(viewsets.ReadOnlyModelViewSet):
     queryset = Student.objects.all()
-    serializer_class = ParentViewChildSerializer
+    serializer_class = StudentSerializer
+    permission_classes = [AllowAny]  # Changed from IsAuthenticated to AllowAny
 
     def list(self, request, *args, **kwargs):
-        parent = request.session.get('id')
+        parent_id = request.query_params.get('parent_id')
+        
+        if not parent_id:
+            return Response(
+                {"detail": "Parent ID is required."}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+            
+        try:
+            parent = Parent.objects.get(id=parent_id)
+        except Parent.DoesNotExist:
+            return Response(
+                {"detail": "Parent not found."}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+            
         children = Student.objects.filter(parent=parent)
-        return super().list(children , *args, **kwargs) 
-         
+        serializer = self.get_serializer(children, many=True)
+        
+        return Response({
+            "status": "success",
+            "children": serializer.data
+        }, status=status.HTTP_200_OK)
+
+    def retrieve(self, request, pk=None, *args, **kwargs):
+        parent_id = request.query_params.get('parent_id')
+        
+        if not parent_id:
+            return Response(
+                {"detail": "Parent ID is required."}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+            
+        try:
+            parent = Parent.objects.get(id=parent_id)
+        except Parent.DoesNotExist:
+            return Response(
+                {"detail": "Parent not found."}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+            
+        try:
+            child = Student.objects.get(id=pk, parent=parent)
+        except Student.DoesNotExist:
+            return Response(
+                {"detail": "Student not found or does not belong to the parent."}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+            
+        serializer = self.get_serializer(child)
+        return Response({
+            "status": "success",
+            "child": serializer.data
+        }, status=status.HTTP_200_OK)
+    
             
 class QuizView(viewsets.ModelViewSet):
     queryset = Quiz.objects.all()
     serializer_class = QuizSerializer
+    permission_classes = [AllowAny]  # Changed from IsAuthenticated to AllowAny
 
     def create(self, request, *args, **kwargs):
-        # Retrieve parent session ID
-        parent_id = request.session.get('id')
+        parent_id = request.data.get('parent_id')
         if not parent_id:
-            return Response({"detail": "Parent authentication required."}, status=status.HTTP_401_UNAUTHORIZED)
+            return Response({"detail": "Parent ID is required."}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             parent = Parent.objects.get(id=parent_id)
         except Parent.DoesNotExist:
             return Response({"detail": "Parent not found."}, status=status.HTTP_404_NOT_FOUND)
 
-        # Get title and topic from the request
         title = request.data.get('title')
         topic = request.data.get('topic')
 
         if not title or not topic:
             return Response({"detail": "Title and topic are required."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # AI component generates questions
         questions = self.generate_ai_questions(topic)
 
-        # Create the quiz
         quiz = Quiz.objects.create(
             title=title,
             topic=topic,
@@ -275,46 +312,40 @@ class ResultView(viewsets.ModelViewSet):
 class AssignmentView(viewsets.ModelViewSet):
     queryset = Assignment.objects.all()
     serializer_class = AssignmentSerializer
+    permission_classes = [AllowAny]  # Changed from IsAuthenticated to AllowAny
     http_method_names = ['post']
 
     def create(self, request, *args, **kwargs):
-        # Retrieve parent session ID
-        parent_id = request.session.get('id')
+        parent_id = request.data.get('parent_id')
         if not parent_id:
-            return Response({"detail": "Parent authentication required."}, status=status.HTTP_401_UNAUTHORIZED)
+            return Response({"detail": "Parent ID is required."}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             parent = Parent.objects.get(id=parent_id)
         except Parent.DoesNotExist:
             return Response({"detail": "Parent not found."}, status=status.HTTP_404_NOT_FOUND)
 
-        # Validate the data and create the assignment using the serializer
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-
-        # Save the assignment with the parent field populated
         serializer.save(parent=parent)
 
         return Response({"detail": "Quiz assigned successfully.", "assignment": serializer.data}, status=status.HTTP_201_CREATED)
 
-
 class UpdateStudentProfileView(generics.UpdateAPIView):
     serializer_class = UpdateStudentProfileSerializer
     queryset = Student.objects.all()
+    permission_classes = [AllowAny]  # Changed from IsAuthenticated to AllowAny
 
     def update(self, request, *args, **kwargs):
-        # Retrieve parent ID from session
-        parent_id = request.session.get('id')  # Ensure this matches the key used to store parent ID
-
-        if parent_id is None:
-            return Response({"detail": "Parent ID not found in session."}, status=status.HTTP_403_FORBIDDEN)
+        parent_id = request.data.get('parent_id')
+        if not parent_id:
+            return Response({"detail": "Parent ID is required."}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             parent = Parent.objects.get(id=parent_id)
         except Parent.DoesNotExist:
             return Response({"detail": "Parent not found."}, status=status.HTTP_404_NOT_FOUND)
 
-        # Retrieve the student ID from the request data
         student_id = request.data.get('id')
         if not student_id:
             return Response({"detail": "Student ID is required."}, status=status.HTTP_400_BAD_REQUEST)
@@ -324,25 +355,27 @@ class UpdateStudentProfileView(generics.UpdateAPIView):
         except Student.DoesNotExist:
             return Response({"detail": "Student not found or does not belong to the parent."}, status=status.HTTP_404_NOT_FOUND)
 
-        # Proceed with profile update
         serializer = self.get_serializer(student, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         self.perform_update(serializer)
 
         return Response({"detail": "Student profile updated successfully."}, status=status.HTTP_200_OK)
-    
+
 
 class RemoveStudentView(viewsets.ModelViewSet):
     queryset = Student.objects.all()
     serializer_class = RemoveStudentSerializer
+    permission_classes = [AllowAny]  # Changed from IsAuthenticated to AllowAny
 
     def destroy(self, request, *args, **kwargs):
         student_id = request.data.get('id')
-        student = student.objects.filter(id=student_id)
-        student.delete()
-        return Response({"detail": "Student removed successfully."}, status=status.HTTP_200_OK)
-    
-
+        try:
+            student = Student.objects.get(id=student_id)
+            student.delete()
+            return Response({"detail": "Student removed successfully."}, status=status.HTTP_200_OK)
+        except Student.DoesNotExist:
+            return Response({"detail": "Student not found."}, status=status.HTTP_404_NOT_FOUND)
+        
 class ImageSearchView(APIView):
     def get(self, request, *args, **kwargs):
         # Retrieve the search keyword from the query parameters
@@ -388,4 +421,3 @@ class ImageSearchView(APIView):
         except Exception as e:
             print(f"Error during search: {e}")
             return None
-        
