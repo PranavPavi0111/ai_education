@@ -11,7 +11,7 @@ from django.core.validators import MaxValueValidator, MinValueValidator
 class Parent(models.Model):
     name = models.CharField(max_length=100,default='')
     phone_number = models.CharField(max_length=15,default='')
-    email = models.CharField(max_length=100,unique=True)
+    email = models.CharField(max_length=100,unique=False)
     password = models.CharField(max_length=100,default='')
 
 class Student(models.Model):
