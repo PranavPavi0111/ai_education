@@ -68,12 +68,12 @@ class QuizQuestionSerializer(serializers.Serializer):
     correct_answer = serializers.IntegerField()
 
 class QuizSerializer(serializers.ModelSerializer):
-    quiz_data = QuizQuestionSerializer(many=True)
+    quiz_data = serializers.JSONField()
 
     class Meta:
         model = Quiz
-        fields = ['topic', 'quiz_data']
-
+        fields = ['id', 'quiz_data']
+        
 class QuizMinimalResponseSerializer(serializers.ModelSerializer):
     class Meta:
         model = Quiz

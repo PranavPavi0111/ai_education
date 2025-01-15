@@ -542,7 +542,21 @@ def student_assigned_quizzes(request, student_id):
         return Response({"assigned_quizzes": serializer.data}, status=status.HTTP_200_OK)
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
+
+@api_view(['GET'])
+def student_quiz(request, student_id, quiz_id):
+    try:
+        # Fetch quizzes for the given student and quiz ID
+        quiz = Quiz.objects.filter(id=quiz_id)
+
+        if not quiz.exists():
+            return Response({"detail": "No quizzes assigned to this student."}, status=status.HTTP_404_NOT_FOUND)
+
+        # Serialize the data
+        serializer = QuizSerializer(quiz, many=True)
+        return Response({"assigned_quizzes": serializer.data}, status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['GET'])
 def student_quiz_responses(request, student_id):
