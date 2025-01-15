@@ -467,35 +467,44 @@ def check_answers_view(request):
 def feedback_view(request):
     if request.method == 'POST':
         try:
+            # Retrieve data from request
             questions = request.data['questions']
-            user_answers = request.data['user_answers']
+            user_answer = request.data['user_answers']  # Single numeric value
+            
+            # Ensure user_answer is valid
+            if user_answer < 1 or user_answer > len(questions[0]['options']):
+                return Response({'error': 'Invalid user answer value'}, status=status.HTTP_400_BAD_REQUEST)
 
-            feedbacks = []
-            areas = []
-            for i, question_data in enumerate(questions):
-                if user_answers[i] != question_data["correct_answer"]:
-                    prompt = f"""
-                    A student answered the following quiz question incorrectly. Analyze their answer and provide personalized feedback to help them understand the mistake and improve their knowledge:
-                    Question: {question_data['question']}
-                    User's Answer: {question_data['options'][user_answers[i] - 1]}
-                    Correct Answer: {question_data['options'][question_data['correct_answer'] - 1]}
-                    Focus on why the user's answers were incorrect and suggest specific areas or concepts they need to review.
-                    """
+            question_data = questions[0]  # Handle the single question
+            correct_answer = question_data["correct_answer"]
 
-                    model = genai.GenerativeModel(model_name="gemini-1.5-flash-latest")
-                    response = model.generate_content(prompt)
-                    feedback_area = response.text.strip()
+            # Initialize feedback and area
+            feedback = ""
+            # area = ""
 
-                    try:
-                        feedback, area = feedback_area.split('\n', 1)  # Assuming feedback and area are separated by a newline
-                    except ValueError:
-                        feedback = feedback_area
-                        area = ""  # Set area to empty string if splitting fails
+            if user_answer != correct_answer:
+                # Construct the prompt
+                prompt = f"""
+                A student answered the following quiz question incorrectly. Analyze their answer and provide personalized feedback to help them understand the mistake and improve their knowledge:
+                Question: {question_data['question']}
+                User's Answer: {question_data['options'][user_answer - 1]}
+                Correct Answer: {question_data['options'][correct_answer - 1]}
+                Focus on why the user's answers were incorrect and suggest specific areas or concepts they need to review.
+                Reply as you are speaking to the student directly and be formal.
+                """
 
-                    feedbacks.append(feedback)
-                    areas.append(area)
+                # Generate feedback
+                model = genai.GenerativeModel(model_name="gemini-1.5-flash-latest")
+                response = model.generate_content(prompt)
+                feedback_area = response.text.strip()
 
-            return Response({'feedbacks': feedbacks, 'areas': areas}, status=status.HTTP_200_OK)
+                try:
+                    feedback, area = feedback_area.split('\n', 1)  # Separate feedback and area
+                except ValueError:
+                    feedback = feedback_area
+                    # area = ""  # Default area to empty string if splitting fails
+
+            return Response({'feedback': feedback}, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
