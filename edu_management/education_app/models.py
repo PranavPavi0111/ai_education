@@ -44,7 +44,7 @@ from django.db.models import JSONField
 
 
 class Quiz(models.Model):
-    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='quizzes')
+    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='quizzes',blank=True)
     quiz_data = models.JSONField()  # To store the generated quiz, options, and correct answers
     response = models.JSONField(null=True, blank=True)  # To store the user's answers or feedback
 

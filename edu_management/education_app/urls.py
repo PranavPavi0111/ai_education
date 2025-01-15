@@ -60,7 +60,8 @@ urlpatterns = [
     path('check_answers/', views.check_answers_view, name='check_answers'),
     path('feedback/', views.feedback_view, name='feedback'),
     path('student_view_profile/',StudentViewProfile.as_view({'get':'list'}),name='student_view_profile'),
-    path('quiz/<int:quiz_id>/response/', store_response_view, name='store_response'),
-    path('student/<int:student_id>/quizzes/', student_assigned_quizzes, name='student_assigned_quizzes'),
-    path('student/<int:student_id>/quiz_responses/', student_quiz_responses, name='student_quiz_responses'),
+    path('quiz/<int:quiz_id>/response/', views.store_response_view, name='store_response'),
+    path('student/<int:student_id>/quizzes/', views.student_assigned_quizzes, name='student_assigned_quizzes'),
+    path('student/<int:student_id>/quiz/<int:quiz_id>/', views.student_quiz, name='student_quiz'),
+    path('student/<int:student_id>/quiz_responses/', views.student_quiz_responses, name='student_quiz_responses'),
 ]
