@@ -84,6 +84,7 @@ class LoginView(APIView):
                             "id": parent.id,
                             "name": parent.name,  # Assuming `name` is a field in Parent model
                             "email": parent.email,
+                            "phone_number": parent.phone_number,
                             "role": "parent",
                         }
                     }
