@@ -41,15 +41,15 @@ class AssignmentSerializer(serializers.ModelSerializer):
         model = Assignment
         fields = '__all__'
 
-class QuizParticipationSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = QuizParticipation
-        fields = '__all__'
+# class QuizParticipationSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = QuizParticipation
+#         fields = '__all__'
 
-class ResultSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Result
-        fields = '__all__'
+# class ResultSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = Result
+#         fields = '__all__'
 
 class ImageSearchSerializer(serializers.Serializer):
     keyword = serializers.CharField(max_length=255)
@@ -61,3 +61,20 @@ class PerformanceReportSerializer(serializers.ModelSerializer):
     class Meta:
         model = PerformanceReport
         fields = '__all__'
+
+class QuizQuestionSerializer(serializers.Serializer):
+    question_text = serializers.CharField(max_length=255)
+    options = serializers.ListField(child=serializers.CharField(max_length=255))
+    correct_answer = serializers.IntegerField()
+
+class QuizSerializer(serializers.ModelSerializer):
+    quiz_data = QuizQuestionSerializer(many=True)
+
+    class Meta:
+        model = Quiz
+        fields = ['topic', 'quiz_data']
+
+class QuizMinimalResponseSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Quiz
+        fields = ['id', 'response']
