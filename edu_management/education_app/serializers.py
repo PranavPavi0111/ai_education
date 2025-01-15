@@ -6,6 +6,19 @@ class UserRegisterSerializer(serializers.ModelSerializer):
     class Meta:
         model = Parent
         fields = '__all__'
+        read_only_fields = ['id']
+
+    def validate_email(self, value):
+        """
+        Custom validation for the email field to ensure uniqueness.
+        """
+        # if self.instance:  # Check during updates
+        #     if Parent.objects.filter(email=value).exclude(id=self.instance.id).exists():
+        #         raise serializers.ValidationError("A parent with this email already exists.")
+        # else:  # Check during creation
+        #     if Parent.objects.filter(email=value).exists():
+        #         raise serializers.ValidationError("A parent with this email already exists.")
+        return value
 
 class StudentRegisterSerializer(serializers.ModelSerializer):
     class Meta:
@@ -16,6 +29,18 @@ class LoginSerializer(serializers.Serializer):
     email = serializers.EmailField()
     password = serializers.CharField(max_length=100)
 
+class ParentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Parent
+        fields = ['id', 'name', 'phone_number', 'email']  
+
+class StudentSerializer(serializers.ModelSerializer):
+    parent = ParentSerializer()  
+
+    class Meta:
+        model = Student
+        fields = ['id', 'name', 'phone_number', 'email', 'department', 'batch', 'parent']
+
 class ParentViewChildSerializer(serializers.Serializer):
     class Meta:
         models = Student
@@ -24,7 +49,8 @@ class ParentViewChildSerializer(serializers.Serializer):
 class UpdateStudentProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = Student
-        fields = ['name', 'email', 'phone_number']
+        fields = ['name', 'email', 'phone_number', 'department', 'batch']
+
 
 class RemoveStudentSerializer(serializers.ModelSerializer):
     class Meta:

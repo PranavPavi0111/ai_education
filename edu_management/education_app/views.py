@@ -138,7 +138,8 @@ class LoginView(APIView):
 
 class ParentViewChild(viewsets.ReadOnlyModelViewSet):
     queryset = Student.objects.all()
-    serializer_class = ParentViewChildSerializer
+    serializer_class = StudentSerializer
+    permission_classes = [AllowAny]  # Changed from IsAuthenticated to AllowAny
 
     def list(self, request, *args, **kwargs):
         parent_id = request.query_params.get('parent_id')
@@ -267,7 +268,6 @@ class AssignmentView(viewsets.ModelViewSet):
             {"message": "Quiz assigned successfully.", "assignment": serializer.data},
             status=status.HTTP_201_CREATED
         )
-
 
 class UpdateStudentProfileView(generics.UpdateAPIView):
     serializer_class = UpdateStudentProfileSerializer
@@ -420,6 +420,7 @@ def parse_questions(questions_text):
                 "correct_answer": correct_answer_index
             })
     return questions
+
 @api_view(['POST'])
 def quiz_view(request):
     if request.method == 'POST':
